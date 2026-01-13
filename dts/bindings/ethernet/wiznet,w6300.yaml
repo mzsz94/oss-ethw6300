@@ -1,0 +1,16 @@
+description: Wiznet W6300 Ethernet Controller
+
+compatible: "wiznet,w6300"
+
+include: spi-device.yaml
+
+properties:
+  int-gpios:
+    type: phandle-array
+    required: true
+    description: Interrupt GPIO pin
+
+  reset-gpios:
+    type: phandle-array
+    required: false
+    description: Reset GPIO pin

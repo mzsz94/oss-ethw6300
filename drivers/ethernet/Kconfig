@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig ETH_W6300
+	bool "Wiznet W6300 Ethernet driver"
+	default y
+	depends on SPI
+	help
+	  Enable W6300 Ethernet driver.
