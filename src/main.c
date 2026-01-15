@@ -24,7 +24,7 @@ int main(void)
 
 	while (1)
 	{
-		LOG_INF("Hello from W6300 Driver Test App!");
+		LOG_INF("Hello from W6300 Driver Test App! For Risc-V");
 		k_sleep(K_SECONDS(1));
 	}
 	return 0;

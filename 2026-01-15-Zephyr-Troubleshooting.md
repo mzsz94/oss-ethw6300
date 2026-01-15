@@ -98,19 +98,30 @@ int main(void)
 
 ---
 
-## 4. 최종 빌드 명령어 (Reference)
+# 최종 빌드 명령어 (Reference)
 
 Zephyr 워크스페이스(`zephyrproject`) 폴더 내에서 실행해야 합니다.
 
+### Arm Cortex-M33 코어 타겟
 ```bash
-cd ~/workspace/rpi-zephyr/zephyrproject
-
-# 가상환경 활성화 (필요 시)
-source .venv/bin/activate
-
-# 빌드 실행
-west build -p always \
-  -b w6300_evb_pico2/rp2350a/m33 \
-  ../ethw6300 \
-  -- -DBOARD_ROOT=/home/suzinee_u/workspace/rpi-zephyr/workspace
+west build -p always -b w6300_evb_pico2/rp2350a/m33 ../ethw6300 -- -DBOARD_ROOT=/home/suzinee_u/workspace/rpi-zephyr/workspace
 ```
+
+### RISC-V Hazard3 코어 타겟
+```bash
+west build -p always -b w6300_evb_pico2/rp2350a/hazard3 ../ethw6300 -- -DBOARD_ROOT=/home/suzinee_u/workspace/rpi-zephyr/workspace
+```
+
+```bash
+cd zephyrproject && source .venv/bin/activate && west build -p always -b w6300_evb_pico2/rp2350a/hazard3 ../ethw6300 -- -DBOARD_ROOT=/home/suzinee_u/workspace/rpi-zephyr/workspace
+```
+
+---
+
+## 5. RISC-V Hazard3 지원
+
+RP2350의 특징인 듀얼 아키텍처 지원에 따라, 동일한 소스 코드를 RISC-V 코어로도 빌드할 수 있습니다. 
+
+- **호환성:** 위에서 설정한 Legacy USB 스택 및 DTR 대기 로직은 아키텍처에 독립적이므로 RISC-V에서도 수정 없이 동일하게 동작합니다.
+- **툴체인:** `west`가 자동으로 `riscv64-zephyr-elf` 툴체인을 찾아 빌드를 수행합니다.
+
