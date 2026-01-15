@@ -1,0 +1,33 @@
+/ {
+	chosen {
+		zephyr,console = &cdc_acm_uart0;
+		zephyr,shell-uart = &cdc_acm_uart0;
+	};
+};
+
+&uart0 {
+	status = "disabled";
+};
+
+&clocks {
+	status = "okay";
+};
+
+&reset {
+	status = "okay";
+};
+
+&xosc {
+	status = "okay";
+};
+
+&pll_usb {
+	status = "okay";
+};
+
+&usbd {
+	status = "okay";
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
