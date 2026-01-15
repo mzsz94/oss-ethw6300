@@ -60,6 +60,8 @@ west build -p always -s ~/workspace/rpi-zephyr/ethw6300 -b rp2350_w6300_evb/rp23
 
 /home/suzinee_u/workspace/rpi-zephyr/ethw6300/.venv/bin/west build -p always -s /home/suzinee_u/workspace/rpi-zephyr/ethw6300 -b rp2350_w6300_evb/rp2350a/hazard3 -- -DBOARD_ROOT=/home/suzinee_u/workspace/rpi-zephyr/ethw6300 
 
+west build -p always -b w6300_evb_pico2/rp2350a/m33 ../ethw6300 -- -DBOARD_ROOT=/home/suzinee_u/workspace/rpi-zephyr/workspace
+
 ### 3.3. 빌드 결과물
 빌드가 성공하면 다음 경로에 펌웨어 파일이 생성됩니다.
 *   `~/workspace/rpi-zephyr/zephyrproject/build/zephyr/zephyr.uf2`
