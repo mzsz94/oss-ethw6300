@@ -1,0 +1,3 @@
+config BOARD_RP2350_W6300_EVB
+	bool "Raspberry Pi RP2350 W6300 EVB"
+	select SOC_RP2350A_HAZARD3

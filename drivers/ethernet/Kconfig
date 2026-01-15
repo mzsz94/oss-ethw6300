@@ -4,5 +4,6 @@ menuconfig ETH_W6300
 	bool "Wiznet W6300 Ethernet driver"
 	default y
 	depends on SPI
+	select ETHERNET
 	help
 	  Enable W6300 Ethernet driver.

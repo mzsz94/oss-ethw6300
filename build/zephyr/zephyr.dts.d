@@ -1,0 +1,24 @@
+empty_file.o: \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/misc/empty_file.c \
+ /home/suzinee_u/workspace/rpi-zephyr/ethw6300/boards/wiznet/rp2350_w6300_evb/rp2350_w6300_evb_rp2350a_hazard3.dts \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/vendor/raspberrypi/rpi_pico/rp2350a.dtsi \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/vendor/raspberrypi/rpi_pico/rp2350.dtsi \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/dt-bindings/adc/adc.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/dt-bindings/dt-util.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/sys/util_macro.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/sys/util_internal.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/sys/util_loops.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/sys/util_listify.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/sys/util_internal_is_eq.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/sys/util_internal_util_inc.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/sys/util_internal_util_dec.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/sys/util_internal_util_x2.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/dt-bindings/gpio/gpio.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/dt-bindings/clock/rpi_pico_rp2350_clock.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/dt-bindings/clock/rpi_pico_clock_common.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/dt-bindings/i2c/i2c.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/dt-bindings/regulator/rpi_pico.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr/dt-bindings/reset/rp2350_reset.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/common/mem.h \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/riscv/raspberrypi/hazard3.dtsi \
+ /home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/common/skeleton.dtsi

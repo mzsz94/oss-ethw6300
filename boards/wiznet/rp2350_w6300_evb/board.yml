@@ -1,0 +1,6 @@
+board:
+  name: rp2350_w6300_evb
+  full_name: Raspberry Pi RP2350 W6300 EVB
+  vendor: wiznet
+  socs:
+    - name: rp2350a

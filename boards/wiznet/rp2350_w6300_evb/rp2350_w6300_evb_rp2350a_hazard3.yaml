@@ -1,0 +1,11 @@
+identifier: rp2350_w6300_evb/rp2350a/hazard3
+name: Raspberry Pi RP2350 W6300 EVB
+type: mcu
+arch: riscv
+toolchain:
+  - zephyr
+ram: 520
+flash: 2048
+supported:
+  - spi
+  - gpio

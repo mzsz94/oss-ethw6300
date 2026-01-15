@@ -1,0 +1,2 @@
+# Load Sysbuild board Kconfig descriptions.
+osource "/home/suzinee_u/workspace/rpi-zephyr/ethw6300/boards/wiznet/rp2350_w6300_evb/Kconfig.sysbuild"

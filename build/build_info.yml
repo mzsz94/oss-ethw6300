@@ -1,0 +1,59 @@
+cmake:
+  application:
+    configuration-dir: '/home/suzinee_u/workspace/rpi-zephyr/ethw6300'
+    source-dir: '/home/suzinee_u/workspace/rpi-zephyr/ethw6300'
+  board:
+    name: 'rp2350_w6300_evb'
+    path:
+     - '/home/suzinee_u/workspace/rpi-zephyr/ethw6300/boards/wiznet/rp2350_w6300_evb'
+    qualifiers: 'rp2350a/hazard3'
+    revision: ''
+  devicetree:
+    bindings-dirs:
+     - '/home/suzinee_u/workspace/rpi-zephyr/ethw6300/dts/bindings'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/bindings'
+    files:
+     - '/home/suzinee_u/workspace/rpi-zephyr/ethw6300/boards/wiznet/rp2350_w6300_evb/rp2350_w6300_evb_rp2350a_hazard3.dts'
+    include-dirs:
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/modules/hal/ambiq/dts'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/modules/hal/atmel/include'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/modules/hal/bouffalolab/include'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/modules/hal/bouffalolab/include/zephyr'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/modules/hal/gigadevice/include'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/modules/hal/microchip/include'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/modules/hal/microchip/dts'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/modules/hal/nuvoton/dts'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/modules/hal/nxp/dts'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/modules/hal/stm32/dts'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/modules/hal/ti/dts'
+     - '/home/suzinee_u/workspace/rpi-zephyr/ethw6300/dts'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/include/zephyr'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/common'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/vendor'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/rx'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/x86'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/xtensa'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/sparc'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/riscv'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/posix'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/arm64'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/arm'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/arc'
+     - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts'
+  kconfig:
+    files:
+     - '/home/suzinee_u/workspace/rpi-zephyr/ethw6300/prj.conf'
+    user-files:
+     - '/home/suzinee_u/workspace/rpi-zephyr/ethw6300/prj.conf'
+  toolchain:
+    name: 'zephyr'
+    path: '/home/suzinee_u/workspace/rpi-zephyr/zephyr-sdk-0.17.0'
+  zephyr:
+    version: '4.3.99'
+    zephyr-base: '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr'
+version: '0.1.0'
+west:
+  command: '/home/suzinee_u/workspace/rpi-zephyr/ethw6300/.venv/bin/west build -b rp2350_w6300_evb/rp2350a/hazard3 -- -DBOARD_ROOT=/home/suzinee_u/workspace/rpi-zephyr/ethw6300'
+  topdir: '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject'
+  version: '1.5.0'

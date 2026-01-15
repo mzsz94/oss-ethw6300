@@ -1,0 +1,7 @@
+mainmenu "W6300 Driver Test"
+
+rsource "drivers/ethernet/Kconfig"
+
+rsource "boards/wiznet/rp2350_w6300_evb/Kconfig.board"
+
+source "Kconfig.zephyr"

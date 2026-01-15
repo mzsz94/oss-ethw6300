@@ -1,0 +1,1 @@
+"mcuboot":"/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/bootloader/mcuboot":"/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/bootloader/mcuboot/boot/zephyr/sysbuild"
