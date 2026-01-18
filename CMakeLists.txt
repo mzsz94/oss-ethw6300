@@ -10,10 +10,10 @@ zephyr_include_directories(
     ${ZEPHYR_HAL_RPI_PICO_MODULE_DIR}/src/common/pico_base_headers/include
 )
 
-# Add driver source directly to the app target to avoid complex dependency issues
+# Include main source and driver source
 target_sources(app PRIVATE 
     src/main.c
-    drivers/ethernet/eth_w6300.c
+    # drivers/ethernet/eth_w6300.c
 )
 
 # Add driver directory to include path
