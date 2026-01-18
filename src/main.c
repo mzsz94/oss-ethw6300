@@ -96,7 +96,12 @@ int main(void)
 	int64_t wait_start;
 
 #if !IS_ENABLED(CONFIG_USB_DEVICE_INITIALIZE_AT_BOOT)
-	int ret = usb_enable(NULL);
+	int ret = usb_device_init();
+	if (ret && ret != -EALREADY) {
+		LOG_ERR("USB init failed: %d", ret);
+	}
+
+	ret = usb_device_enable(NULL);
 	if (ret && ret != -EALREADY) {
 		LOG_ERR("USB enable failed: %d", ret);
 	}
