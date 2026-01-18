@@ -14,6 +14,7 @@ cmake:
      - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/bindings'
     files:
      - '/home/suzinee_u/workspace/rpi-zephyr/ethw6300/boards/wiznet/rp2350_w6300_evb/rp2350_w6300_evb_rp2350a_hazard3.dts'
+     - '/home/suzinee_u/workspace/rpi-zephyr/ethw6300/app.overlay'
     include-dirs:
      - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/modules/hal/ambiq/dts'
      - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/modules/hal/atmel/include'
@@ -41,6 +42,8 @@ cmake:
      - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/arm'
      - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts/arc'
      - '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr/dts'
+    user-files:
+     - '/home/suzinee_u/workspace/rpi-zephyr/ethw6300/app.overlay'
   kconfig:
     files:
      - '/home/suzinee_u/workspace/rpi-zephyr/ethw6300/prj.conf'
@@ -54,6 +57,6 @@ cmake:
     zephyr-base: '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject/zephyr'
 version: '0.1.0'
 west:
-  command: '/home/suzinee_u/workspace/rpi-zephyr/ethw6300/.venv/bin/west build -b rp2350_w6300_evb/rp2350a/hazard3 -- -DBOARD_ROOT=/home/suzinee_u/workspace/rpi-zephyr/ethw6300'
+  command: './.venv/bin/west build -p always -b rp2350_w6300_evb/rp2350a/hazard3 -- -DBOARD_ROOT=/home/suzinee_u/workspace/rpi-zephyr/ethw6300'
   topdir: '/home/suzinee_u/workspace/rpi-zephyr/zephyrproject'
   version: '1.5.0'
