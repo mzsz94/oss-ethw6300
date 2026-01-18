@@ -1,6 +1,5 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/usb/usb_device.h>
 #include <zephyr/drivers/uart.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/devicetree.h>
@@ -10,27 +9,40 @@
 
 LOG_MODULE_REGISTER(main);
 
+static void wait_for_dtr(const struct device *dev, uint32_t timeout_ms)
+{
+	uint32_t dtr = 0;
+	int64_t start;
+
+	if (!device_is_ready(dev)) {
+		LOG_WRN("CDC ACM UART not ready, skipping DTR wait");
+		return;
+	}
+
+	start = k_uptime_get();
+	while (!dtr && (k_uptime_get() - start) < timeout_ms) {
+		uart_line_ctrl_get(dev, UART_LINE_CTRL_DTR, &dtr);
+		k_sleep(K_MSEC(100));
+	}
+
+	if (!dtr) {
+		LOG_WRN("DTR not asserted, continuing without host");
+	}
+}
+
 int main(void)
 {
 	const struct device *const dev = DEVICE_DT_GET_ANY(zephyr_cdc_acm_uart);
 	const struct device *const w6300 = DEVICE_DT_GET_ONE(wiznet_w6300);
 	const struct device *const gpio0 = DEVICE_DT_GET(DT_NODELABEL(gpio0));
-	uint32_t dtr = 0;
 	uint8_t reg = 0;
 	bool w6300_ready = false;
 	int ret;
 
-	if (usb_enable(NULL)) {
-		return 0;
-	}
-
 	/* 시리얼 터미널이 연결될 때까지 대기 (선택 사항)
 	 * 맥북에서 포트가 바로 보이지 않는다면 이 루프가 도움이 됩니다.
 	 */
-	while (!dtr) {
-		uart_line_ctrl_get(dev, UART_LINE_CTRL_DTR, &dtr);
-		k_sleep(K_MSEC(100));
-	}
+	wait_for_dtr(dev, 5000);
 
 	if (device_is_ready(gpio0)) {
 		ret = gpio_pin_configure(gpio0, 20, GPIO_OUTPUT_INACTIVE);
