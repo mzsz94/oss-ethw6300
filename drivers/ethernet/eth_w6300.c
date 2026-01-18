@@ -26,52 +26,63 @@ struct eth_w6300_dev_data {
  * Frame: [Addr High][Addr Low][Control][Data...] 
  * Note: Control byte varies by chip. Assuming 0x00 for Read/Common Block for now.
  */
-static int w6300_read_reg(const struct device *dev, uint16_t addr, uint8_t *val)
+int eth_w6300_read_reg(const struct device *dev, uint16_t addr, uint8_t *val)
 {
 	const struct eth_w6300_config *cfg = dev->config;
-	uint8_t cmd[3];
-	uint8_t data = 0;
+	uint8_t tx_data[4];
+	uint8_t rx_data[4] = { 0 };
 
 	/* W6300/W6100 Control Byte might differ. 
 	 * For now, just trying to send 3 bytes (Addr+Ctrl) and read 1 byte.
 	 * Addr: 16bit, Control: 8bit.
 	 */
-	cmd[0] = (addr >> 8) & 0xFF;
-	cmd[1] = addr & 0xFF;
-	cmd[2] = 0x00; /* Control Byte - To be verified */
+	tx_data[0] = (addr >> 8) & 0xFF;
+	tx_data[1] = addr & 0xFF;
+	tx_data[2] = 0x00; /* Control Byte - To be verified */
+	tx_data[3] = 0x00; /* Dummy byte to clock in data */
 
 	const struct spi_buf tx_buf = {
-		.buf = cmd,
-		.len = sizeof(cmd),
+		.buf = tx_data,
+		.len = sizeof(tx_data),
 	};
-	const struct spi_buf_set tx = {
+	const struct spi_buf_set tx_set = {
 		.buffers = &tx_buf,
 		.count = 1,
 	};
 
 	struct spi_buf rx_buf = {
-		.buf = &data,
-		.len = 1,
+		.buf = rx_data,
+		.len = sizeof(rx_data),
 	};
-	const struct spi_buf_set rx = {
+	const struct spi_buf_set rx_set = {
 		.buffers = &rx_buf,
 		.count = 1,
 	};
 
-	int ret = spi_transceive_dt(&cfg->spi, &tx, &rx);
+	int ret = spi_transceive_dt(&cfg->spi, &tx_set, &rx_set);
 	if (ret < 0) {
 		LOG_ERR("SPI transfer failed: %d", ret);
 		return ret;
 	}
 
-	*val = data;
+	*val = rx_data[3];
 	return 0;
+}
+
+static void w6300_log_phy(uint8_t phy)
+{
+	const char *link = (phy & W6300_PHYCFGR_LNK) ? "up" : "down";
+	const char *speed = (phy & W6300_PHYCFGR_SPD) ? "100" : "10";
+	const char *duplex = (phy & W6300_PHYCFGR_DPX) ? "full" : "half";
+
+	LOG_INF("W6300 PHY: link %s, %s Mbps, %s duplex (PHYCFGR=0x%02X)",
+		link, speed, duplex, phy);
 }
 
 static int eth_w6300_init(const struct device *dev)
 {
 	const struct eth_w6300_config *cfg = dev->config;
-	uint8_t id_reg = 0;
+	uint8_t reg = 0;
 
 	if (!spi_is_ready_dt(&cfg->spi)) {
 		LOG_ERR("SPI bus %s not ready", cfg->spi.bus->name);
@@ -80,10 +91,14 @@ static int eth_w6300_init(const struct device *dev)
 
 	LOG_INF("W6300 Driver Initializing...");
 
-	/* Try to read a register to verify connection */
-	/* Reading Address 0x0000 (Common Register Block usually) */
-	if (w6300_read_reg(dev, 0x0000, &id_reg) == 0) {
-		LOG_INF("Read Register 0x0000: 0x%02X", id_reg);
+	if (eth_w6300_read_reg(dev, W6300_MR, &reg) == 0) {
+		LOG_INF("W6300 MR=0x%02X", reg);
+	}
+	if (eth_w6300_read_reg(dev, W6300_VERSIONR, &reg) == 0) {
+		LOG_INF("W6300 VERSIONR=0x%02X", reg);
+	}
+	if (eth_w6300_read_reg(dev, W6300_PHYCFGR, &reg) == 0) {
+		w6300_log_phy(reg);
 	}
 
 	return 0;

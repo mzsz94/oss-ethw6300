@@ -48,7 +48,7 @@ spi_w6300: spi-bitbang {
 	w6300: w6300@0 {
 		compatible = "wiznet,w6300";
 		reg = <0>;
-		spi-max-frequency = <10000000>;
+		spi-max-frequency = <500000>;
 		int-gpios = <&gpio0 15 GPIO_ACTIVE_LOW>;
 	};
 };
