@@ -84,7 +84,8 @@ int main(void)
 	}
 
 	LOG_INF("Hello from W6300 Driver Test App! For Risc-V");
-	LOG_INF("W6300 Ethernet HTTP Server started.");
+	LOG_INF("Static IP: 192.168.0.200 (Check your router subnet!)");
+	LOG_INF("W6300 Ethernet HTTP Server started on Port %d", HTTP_PORT);
 
 	while (1)
 	{
