@@ -4,7 +4,9 @@
 #include <zephyr/drivers/uart.h>
 #include <zephyr/net/net_if.h>
 #include <zephyr/net/net_core.h>
+#include <zephyr/net/net_ip.h>
 #include <zephyr/net/socket.h>
+#include <errno.h>
 
 LOG_MODULE_REGISTER(main);
 
@@ -24,9 +26,24 @@ void start_http_server(void)
 {
 	int serv;
 	struct sockaddr_in bind_addr;
+	struct net_if *iface;
 
-	/* Wait for network interface to come up */
-	k_sleep(K_SECONDS(3));
+	LOG_INF("Waiting for network interface...");
+	iface = net_if_get_default();
+	while (iface == NULL) {
+		k_sleep(K_MSEC(100));
+		iface = net_if_get_default();
+	}
+
+	while (!net_if_is_up(iface)) {
+		k_sleep(K_MSEC(200));
+	}
+
+	while (net_if_ipv4_get_global_addr(iface, NET_ADDR_PREFERRED) == NULL) {
+		k_sleep(K_MSEC(200));
+	}
+
+	LOG_INF("Network interface is up with IPv4 address assigned.");
 
 	serv = zsock_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	bind_addr.sin_family = AF_INET;
@@ -76,15 +93,23 @@ int main(void)
 {
 	const struct device *const dev = DEVICE_DT_GET_ANY(zephyr_cdc_acm_uart);
 	uint32_t dtr = 0;
+	int64_t wait_start;
 
-	if (usb_enable(NULL)) {
-		return 0;
+#if !IS_ENABLED(CONFIG_USB_DEVICE_INITIALIZE_AT_BOOT)
+	int ret = usb_enable(NULL);
+	if (ret && ret != -EALREADY) {
+		LOG_ERR("USB enable failed: %d", ret);
 	}
+#endif
 
 	/* Wait for serial terminal connection */
-	while (!dtr) {
+	wait_start = k_uptime_get();
+	while (!dtr && k_uptime_get() < (wait_start + 5000)) {
 		uart_line_ctrl_get(dev, UART_LINE_CTRL_DTR, &dtr);
 		k_sleep(K_MSEC(100));
+	}
+	if (!dtr) {
+		LOG_WRN("USB serial not connected, continuing without DTR.");
 	}
 
 	LOG_INF("Hello from W6300 Driver Test App! For Risc-V");
