@@ -8,8 +8,21 @@ LOG_MODULE_REGISTER(eth_w6300, CONFIG_ETHERNET_LOG_LEVEL);
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/spi.h>
 #include <zephyr/net/ethernet.h>
+#include <zephyr/net/net_if.h>
+#include <zephyr/net/net_pkt.h>
 
 #include "eth_w6300.h"
+
+/* W6300 Blocks */
+#define W6300_BLOCK_COMMON    0x00
+#define W6300_BLOCK_S0        0x01
+#define W6300_BLOCK_S0_TX     0x02
+#define W6300_BLOCK_S0_RX     0x03
+
+/* Common Registers */
+#define W6300_REG_MODE        0x0000
+#define W6300_REG_SHAR        0x0009 /* MAC Address */
+#define W6300_REG_VERSION     0x001E /* Version Register in W6100/W6300 */
 
 struct eth_w6300_config {
 	struct spi_dt_spec spi;
@@ -21,57 +34,68 @@ struct eth_w6300_dev_data {
 	uint8_t mac_addr[6];
 };
 
-/* 
- * Basic SPI Read function for Wiznet Chips (Variable Data Length) 
- * Frame: [Addr High][Addr Low][Control][Data...] 
- * Note: Control byte varies by chip. Assuming 0x00 for Read/Common Block for now.
- */
-static int w6300_read_reg(const struct device *dev, uint16_t addr, uint8_t *val)
+static int w6300_read_reg(const struct device *dev, uint16_t addr, uint8_t block, uint8_t *val)
 {
 	const struct eth_w6300_config *cfg = dev->config;
 	uint8_t cmd[3];
-	uint8_t data = 0;
-
-	/* W6300/W6100 Control Byte might differ. 
-	 * For now, just trying to send 3 bytes (Addr+Ctrl) and read 1 byte.
-	 * Addr: 16bit, Control: 8bit.
-	 */
+	
 	cmd[0] = (addr >> 8) & 0xFF;
 	cmd[1] = addr & 0xFF;
-	cmd[2] = 0x00; /* Control Byte - To be verified */
+	cmd[2] = (block << 3) | (0 << 2); /* Read, Variable length */
 
-	const struct spi_buf tx_buf = {
-		.buf = cmd,
-		.len = sizeof(cmd),
+	const struct spi_buf tx_buf[] = {
+		{ .buf = cmd, .len = 3 },
 	};
-	const struct spi_buf_set tx = {
-		.buffers = &tx_buf,
-		.count = 1,
-	};
+	const struct spi_buf_set tx = { .buffers = tx_buf, .count = 1 };
 
-	struct spi_buf rx_buf = {
-		.buf = &data,
-		.len = 1,
+	struct spi_buf rx_buf[] = {
+		{ .buf = NULL, .len = 3 },
+		{ .buf = val, .len = 1 },
 	};
-	const struct spi_buf_set rx = {
-		.buffers = &rx_buf,
-		.count = 1,
-	};
+	const struct spi_buf_set rx = { .buffers = rx_buf, .count = 2 };
 
-	int ret = spi_transceive_dt(&cfg->spi, &tx, &rx);
-	if (ret < 0) {
-		LOG_ERR("SPI transfer failed: %d", ret);
-		return ret;
-	}
-
-	*val = data;
-	return 0;
+	return spi_transceive_dt(&cfg->spi, &tx, &rx);
 }
+
+static int w6300_write_reg(const struct device *dev, uint16_t addr, uint8_t block, uint8_t val)
+{
+	const struct eth_w6300_config *cfg = dev->config;
+	uint8_t cmd[4];
+	
+	cmd[0] = (addr >> 8) & 0xFF;
+	cmd[1] = addr & 0xFF;
+	cmd[2] = (block << 3) | (1 << 2); /* Write, Variable length */
+	cmd[3] = val;
+
+	const struct spi_buf tx_buf[] = {
+		{ .buf = cmd, .len = 4 },
+	};
+	const struct spi_buf_set tx = { .buffers = tx_buf, .count = 1 };
+
+	return spi_write_dt(&cfg->spi, &tx);
+}
+
+/* Socket Registers */
+#define W6300_REG_Sn_MR       0x0000
+#define W6300_REG_Sn_CR       0x0001
+#define W6300_REG_Sn_SR       0x0003
+#define W6300_REG_Sn_TX_FSR   0x0012
+#define W6300_REG_Sn_TX_WR    0x0014
+#define W6300_REG_Sn_RX_RSR   0x0016
+#define W6300_REG_Sn_RX_RD    0x0018
+
+/* Socket Commands */
+#define W6300_CR_OPEN         0x01
+#define W6300_CR_SEND         0x20
+#define W6300_CR_RECV         0x40
+
+/* Socket Modes */
+#define W6300_MR_MACRAW       0x04
 
 static int eth_w6300_init(const struct device *dev)
 {
 	const struct eth_w6300_config *cfg = dev->config;
-	uint8_t id_reg = 0;
+	uint8_t version = 0;
 
 	if (!spi_is_ready_dt(&cfg->spi)) {
 		LOG_ERR("SPI bus %s not ready", cfg->spi.bus->name);
@@ -80,17 +104,57 @@ static int eth_w6300_init(const struct device *dev)
 
 	LOG_INF("W6300 Driver Initializing...");
 
-	/* Try to read a register to verify connection */
-	/* Reading Address 0x0000 (Common Register Block usually) */
-	if (w6300_read_reg(dev, 0x0000, &id_reg) == 0) {
-		LOG_INF("Read Register 0x0000: 0x%02X", id_reg);
-	}
+	/* Soft reset */
+	w6300_write_reg(dev, W6300_REG_MODE, W6300_BLOCK_COMMON, 0x80);
+	k_msleep(10);
+
+	/* Check version */
+	w6300_read_reg(dev, W6300_REG_VERSION, W6300_BLOCK_COMMON, &version);
+	LOG_INF("W6300 Chip Version: 0x%02X", version);
+
+	/* Set MAC address in SHAR */
+	/* We will set this in iface_init, but let's put it here if we had it */
+
+	/* Initialize Socket 0 in MACRAW mode */
+	w6300_write_reg(dev, W6300_REG_Sn_MR, W6300_BLOCK_S0, W6300_MR_MACRAW);
+	w6300_write_reg(dev, W6300_REG_Sn_CR, W6300_BLOCK_S0, W6300_CR_OPEN);
+	
+	uint8_t sr = 0;
+	w6300_read_reg(dev, W6300_REG_Sn_SR, W6300_BLOCK_S0, &sr);
+	LOG_INF("Socket 0 Status: 0x%02X", sr);
 
 	return 0;
 }
 
+static void eth_w6300_iface_init(struct net_if *iface)
+{
+	const struct device *dev = net_if_get_device(iface);
+	struct eth_w6300_dev_data *data = dev->data;
+
+	data->iface = iface;
+
+	/* Set MAC address (dummy for now or from DTS) */
+	data->mac_addr[0] = 0x00;
+	data->mac_addr[1] = 0x08;
+	data->mac_addr[2] = 0xDC;
+	data->mac_addr[3] = 0x11;
+	data->mac_addr[4] = 0x22;
+	data->mac_addr[5] = 0x33;
+
+	net_if_set_link_addr(iface, data->mac_addr, 6, NET_LINK_ETHERNET);
+	ethernet_init(iface);
+}
+
+static int eth_w6300_send(const struct device *dev, struct net_pkt *pkt)
+{
+	/* TODO: Implement packet transmission */
+	LOG_DBG("Sending packet, len %zu", net_pkt_get_len(pkt));
+	return 0;
+}
+
 static const struct ethernet_api eth_w6300_api = {
-	/* We will fill this later */
+	.iface_api.init = eth_w6300_iface_init,
+	.send = eth_w6300_send,
 };
 
 #define ETH_W6300_DEFINE(n) \
@@ -101,13 +165,13 @@ static const struct ethernet_api eth_w6300_api = {
 	\
 	static struct eth_w6300_dev_data eth_w6300_data_##n; \
 	\
-	DEVICE_DT_INST_DEFINE(n, \
+	ETH_NET_DEVICE_DT_INST_DEFINE(n, \
 		eth_w6300_init, \
 		NULL, \
 		&eth_w6300_data_##n, \
 		&eth_w6300_config_##n, \
-		POST_KERNEL, \
 		CONFIG_ETH_INIT_PRIORITY, \
-		&eth_w6300_api);
+		&eth_w6300_api, \
+		NET_ETH_MTU);
 
 DT_INST_FOREACH_STATUS_OKAY(ETH_W6300_DEFINE)
