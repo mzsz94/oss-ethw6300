@@ -89,7 +89,7 @@ static inline uint8_t w6300_spi_instr(uint8_t rwb, uint8_t bsb)
 
 /*
  * W6300 single-SPI frame:
- * 	[INSTR(1B)] [ADDR(2B)] [DUMMY(1B)] [DATA...]
+ *   [INSTR(1B)] [ADDR(2B)] [DUMMY(1B)] [DATA...]
  *
  * INSTR: MOD[7:6], RWB[5], BSB[4:0]. Do not use W5x00 control/VDM framing.
  */
@@ -291,11 +291,11 @@ static const struct ethernet_api eth_w6300_api = {
 	static const struct eth_w6300_config eth_w6300_config_##n = { \
 		.cs_gpio = SPI_CS_GPIOS_DT_SPEC_INST_GET(n), \
 		.sclk_gpio = GPIO_DT_SPEC_GET_BY_IDX(W6300_SPI_BUS(n), \
-									 clk_gpios, 0), \
+						     clk_gpios, 0), \
 		.mosi_gpio = GPIO_DT_SPEC_GET_BY_IDX(W6300_SPI_BUS(n), \
-									 mosi_gpios, 0), \
+						     mosi_gpios, 0), \
 		.miso_gpio = GPIO_DT_SPEC_GET_BY_IDX(W6300_SPI_BUS(n), \
-									 miso_gpios, 0), \
+						     miso_gpios, 0), \
 		.io2_gpio = GPIO_DT_SPEC_INST_GET_OR(n, io2_gpios, {0}), \
 		.io3_gpio = GPIO_DT_SPEC_INST_GET_OR(n, io3_gpios, {0}), \
 		.reset_gpio = GPIO_DT_SPEC_INST_GET_OR(n, reset_gpios, {0}), \

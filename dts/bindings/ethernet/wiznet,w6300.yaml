@@ -14,3 +14,13 @@ properties:
     type: phandle-array
     required: false
     description: Reset GPIO pin
+
+  io2-gpios:
+    type: phandle-array
+    required: false
+    description: Extra IO2 GPIO pin
+
+  io3-gpios:
+    type: phandle-array
+    required: false
+    description: Extra IO3 GPIO pin

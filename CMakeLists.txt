@@ -13,7 +13,7 @@ zephyr_include_directories(
 # Include main source and driver source
 target_sources(app PRIVATE 
     src/main.c
-    # drivers/ethernet/eth_w6300.c
+    drivers/ethernet/eth_w6300.c
 )
 
 # Add driver directory to include path
