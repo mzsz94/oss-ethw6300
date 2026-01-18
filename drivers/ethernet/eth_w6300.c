@@ -136,147 +136,252 @@ static void w6300_log_phy(uint8_t physr)
 		link, speed, duplex, physr);
 }
 
-static int eth_w6300_init(const struct device *dev)
+/* --- RX/TX Implementation --- */
+
+static uint16_t w6300_get_tx_free_size(const struct device *dev)
+{
+	uint16_t val = 0;
+	eth_w6300_read_reg(dev, W6300_REG_Sn_TX_FSR, (uint8_t *)&val); /* High byte */
+	/* Warning: Byte order? W6300 is Big Endian. read_reg returns 8bit? No, function is 8bit.
+	   Let's use our helper eth_w6300_read_reg which reads 1 byte. 
+	   Wait, the reference code provided eth_w6300_read_reg which takes uint16_t addr and returns uint8_t *val.
+	   We need a 16-bit read helper.
+	*/
+	uint8_t h, l;
+	eth_w6300_read_reg(dev, W6300_REG_Sn_TX_FSR, &h);
+	eth_w6300_read_reg(dev, W6300_REG_Sn_TX_FSR + 1, &l);
+	return (h << 8) | l;
+}
+
+static uint16_t w6300_get_tx_wr_ptr(const struct device *dev)
+{
+	uint8_t h, l;
+	eth_w6300_read_reg(dev, W6300_REG_Sn_TX_WR, &h);
+	eth_w6300_read_reg(dev, W6300_REG_Sn_TX_WR + 1, &l);
+	return (h << 8) | l;
+}
+
+static void w6300_set_tx_wr_ptr(const struct device *dev, uint16_t ptr)
+{
+	eth_w6300_write_reg(dev, W6300_REG_Sn_TX_WR, (ptr >> 8) & 0xFF);
+	eth_w6300_write_reg(dev, W6300_REG_Sn_TX_WR + 1, ptr & 0xFF);
+}
+
+static uint16_t w6300_get_rx_size(const struct device *dev)
+{
+	uint8_t h, l;
+	eth_w6300_read_reg(dev, W6300_REG_Sn_RX_RSR, &h);
+	eth_w6300_read_reg(dev, W6300_REG_Sn_RX_RSR + 1, &l);
+	return (h << 8) | l;
+}
+
+static uint16_t w6300_get_rx_rd_ptr(const struct device *dev)
+{
+	uint8_t h, l;
+	eth_w6300_read_reg(dev, W6300_REG_Sn_RX_RD, &h);
+	eth_w6300_read_reg(dev, W6300_REG_Sn_RX_RD + 1, &l);
+	return (h << 8) | l;
+}
+
+static void w6300_set_rx_rd_ptr(const struct device *dev, uint16_t ptr)
+{
+	eth_w6300_write_reg(dev, W6300_REG_Sn_RX_RD, (ptr >> 8) & 0xFF);
+	eth_w6300_write_reg(dev, W6300_REG_Sn_RX_RD + 1, ptr & 0xFF);
+}
+
+static void w6300_write_buf(const struct device *dev, uint16_t addr, uint8_t block, uint8_t *buf, uint16_t len)
 {
 	const struct eth_w6300_config *cfg = dev->config;
-	uint8_t reg = 0;
-	int ret;
+	/* Block is always S0_TX (0x02) for TX buffer */
+	/* Frame: [INSTR][ADDR][DATA...] */
+	uint8_t instr = w6300_spi_instr(W6300_SPI_RWB_WRITE, W6300_SPI_BSB_COMMON); // WAIT, block selection?
+	/* W6300 Single SPI mode addresses memory linearly? 
+	   Or do we need to select block in INSTR? 
+	   The reference macro W6300_SPI_INSTR takes 'bsb' (Block Select bits).
+	   So we must pass W6300_BLOCK_S0_TX to instr.
+	*/
+	instr = w6300_spi_instr(W6300_SPI_RWB_WRITE, block);
 
-	if (cfg->reset_gpio.port != NULL) {
-		if (!gpio_is_ready_dt(&cfg->reset_gpio)) {
-			LOG_ERR("Reset GPIO not ready");
-			return -ENODEV;
-		}
-		ret = gpio_pin_configure_dt(&cfg->reset_gpio, GPIO_OUTPUT_ACTIVE);
-		if (ret != 0) {
-			LOG_ERR("Failed to configure reset GPIO");
-			return ret;
-		}
-	}
+	w6300_cs_assert(cfg);
+	w6300_spi_write_header(cfg, instr, addr);
+	for(int i=0; i<len; i++) w6300_spi_write_byte(cfg, buf[i]);
+	w6300_cs_deassert(cfg);
+}
 
-	if (!gpio_is_ready_dt(&cfg->cs_gpio)) {
-		LOG_ERR("CS GPIO not ready");
-		return -ENODEV;
-	}
-	if (!gpio_is_ready_dt(&cfg->sclk_gpio)) {
-		LOG_ERR("SCLK GPIO not ready");
-		return -ENODEV;
-	}
-	if (!gpio_is_ready_dt(&cfg->mosi_gpio)) {
-		LOG_ERR("MOSI GPIO not ready");
-		return -ENODEV;
-	}
-	if (!gpio_is_ready_dt(&cfg->miso_gpio)) {
-		LOG_ERR("MISO GPIO not ready");
-		return -ENODEV;
-	}
+static void w6300_read_buf(const struct device *dev, uint16_t addr, uint8_t block, uint8_t *buf, uint16_t len)
+{
+	const struct eth_w6300_config *cfg = dev->config;
+	uint8_t instr = w6300_spi_instr(W6300_SPI_RWB_READ, block);
 
-	/* CSn is active-low on W6300-EVB-Pico2; flags handle inversion. */
-	ret = gpio_pin_configure_dt(&cfg->cs_gpio, GPIO_OUTPUT_INACTIVE);
-	if (ret != 0) {
-		LOG_ERR("Failed to configure CS GPIO");
-		return ret;
-	}
-	ret = gpio_pin_configure_dt(&cfg->sclk_gpio, GPIO_OUTPUT_INACTIVE);
-	if (ret != 0) {
-		LOG_ERR("Failed to configure SCLK GPIO");
-		return ret;
-	}
-	gpio_pin_set_dt(&cfg->sclk_gpio, 0);
-	ret = gpio_pin_configure_dt(&cfg->mosi_gpio, GPIO_OUTPUT_INACTIVE);
-	if (ret != 0) {
-		LOG_ERR("Failed to configure MOSI GPIO");
-		return ret;
-	}
-	ret = gpio_pin_configure_dt(&cfg->miso_gpio, GPIO_INPUT);
-	if (ret != 0) {
-		LOG_ERR("Failed to configure MISO GPIO");
-		return ret;
-	}
+	w6300_cs_assert(cfg);
+	w6300_spi_write_header(cfg, instr, addr);
+	for(int i=0; i<len; i++) buf[i] = w6300_spi_read_byte(cfg);
+	w6300_cs_deassert(cfg);
+}
 
-	if (cfg->io2_gpio.port != NULL) {
-		if (!gpio_is_ready_dt(&cfg->io2_gpio)) {
-			LOG_ERR("IO2 GPIO not ready");
-			return -ENODEV;
-		}
-		/* IO2 is QSPI-only; keep high-Z in single SPI mode. */
-		ret = gpio_pin_configure_dt(&cfg->io2_gpio, GPIO_INPUT);
-		if (ret != 0) {
-			LOG_ERR("Failed to configure IO2 GPIO");
-			return ret;
-		}
+static void w6300_exec_cmd(const struct device *dev, uint8_t cmd)
+{
+	eth_w6300_write_reg(dev, W6300_REG_Sn_CR, cmd);
+	uint8_t cr;
+	do {
+		eth_w6300_read_reg(dev, W6300_REG_Sn_CR, &cr);
+	} while (cr != 0);
+}
+
+static int eth_w6300_send(const struct device *dev, struct net_pkt *pkt)
+{
+	uint16_t len = net_pkt_get_len(pkt);
+	uint16_t freesize;
+
+	do {
+		freesize = w6300_get_tx_free_size(dev);
+	} while (freesize < len);
+
+	uint16_t ptr = w6300_get_tx_wr_ptr(dev);
+	uint16_t offset = ptr;
+
+	struct net_buf *frag;
+	for (frag = pkt->buffer; frag; frag = frag->frags) {
+		w6300_write_buf(dev, offset, W6300_BLOCK_S0_TX, frag->data, frag->len);
+		offset += frag->len;
 	}
 
-	if (cfg->io3_gpio.port != NULL) {
-		if (!gpio_is_ready_dt(&cfg->io3_gpio)) {
-			LOG_ERR("IO3 GPIO not ready");
-			return -ENODEV;
-		}
-		/* IO3 is QSPI-only; keep high-Z in single SPI mode. */
-		ret = gpio_pin_configure_dt(&cfg->io3_gpio, GPIO_INPUT);
-		if (ret != 0) {
-			LOG_ERR("Failed to configure IO3 GPIO");
-			return ret;
-		}
+	w6300_set_tx_wr_ptr(dev, offset);
+	w6300_exec_cmd(dev, W6300_CR_SEND);
+
+	return 0;
+}
+
+static void eth_w6300_rx(const struct device *dev)
+{
+	struct eth_w6300_dev_data *data = dev->data;
+	uint16_t rsr = w6300_get_rx_size(dev);
+	if (rsr == 0) return;
+
+	uint16_t ptr = w6300_get_rx_rd_ptr(dev);
+	uint8_t header[2];
+	
+	/* Read packet header (2 bytes length) */
+	w6300_read_buf(dev, ptr, W6300_BLOCK_S0_RX, header, 2);
+	ptr += 2;
+	
+	uint16_t len = (header[0] << 8) | header[1];
+	len -= 2; /* Header includes itself in size? Standard W5500 MACRAW: size includes 2 byte header. */
+
+	struct net_pkt *pkt = net_pkt_rx_alloc_with_buffer(data->iface, len, AF_UNSPEC, 0, K_NO_WAIT);
+	if (!pkt) {
+		w6300_set_rx_rd_ptr(dev, ptr + len);
+		w6300_exec_cmd(dev, W6300_CR_RECV);
+		return;
 	}
 
-	if (cfg->reset_gpio.port != NULL) {
-		/* RSTn is active-low on W6300-EVB-Pico2. */
-		k_msleep(10);
-		gpio_pin_set_dt(&cfg->reset_gpio, 0);
-		k_msleep(200);
+	uint16_t offset = ptr;
+	struct net_buf *frag;
+	for (frag = pkt->buffer; frag; frag = frag->frags) {
+		w6300_read_buf(dev, offset, W6300_BLOCK_S0_RX, frag->data, frag->len);
+		offset += frag->len;
 	}
 
-	LOG_INF("W6300 Driver Initializing...");
+	if (net_recv_data(data->iface, pkt) < 0) {
+		net_pkt_unref(pkt);
+	}
 
-	{
-		uint8_t cidr0 = 0;
-		uint8_t cidr1 = 0;
+	w6300_set_rx_rd_ptr(dev, offset);
+	w6300_exec_cmd(dev, W6300_CR_RECV);
+}
 
-		if (eth_w6300_read_reg(dev, W6300_CIDR0, &cidr0) == 0) {
-			LOG_INF("W6300 CIDR0=0x%02X", cidr0);
-		}
-		if (eth_w6300_read_reg(dev, W6300_CIDR1, &cidr1) == 0) {
-			LOG_INF("W6300 CIDR1=0x%02X", cidr1);
-		}
-	}
-	if (eth_w6300_read_reg(dev, W6300_VER, &reg) == 0) {
-		LOG_INF("W6300 VER=0x%02X", reg);
-	}
-	if (eth_w6300_read_reg(dev, W6300_PHYSR, &reg) == 0) {
-		w6300_log_phy(reg);
-	}
+/* --- Software SPI (Bitbang) Implementation --- */
+
+static void soft_spi_init(const struct device *dev)
+{
+	const struct eth_w6300_config *cfg = dev->config;
+
+	/* Configure GPIOs */
+	gpio_pin_configure_dt(&cfg->cs_gpio, GPIO_OUTPUT_INACTIVE); /* CS High (Inactive) */
+	gpio_pin_configure_dt(&cfg->sclk_gpio, GPIO_OUTPUT_INACTIVE); /* CLK Low */
+	gpio_pin_configure_dt(&cfg->mosi_gpio, GPIO_OUTPUT_INACTIVE); /* MOSI Low */
+	gpio_pin_configure_dt(&cfg->miso_gpio, GPIO_INPUT);
+	
+	gpio_pin_set_dt(&cfg->cs_gpio, 0); /* Release CS (High) */
+}
+
+/* Helper wrappers */
+static uint8_t w6300_read_reg8(const struct device *dev, uint16_t offset, uint8_t block)
+{
+	uint8_t val = 0;
+	w6300_read_buf(dev, offset, block, &val, 1);
+	return val;
+}
+
+static void w6300_write_reg8(const struct device *dev, uint16_t offset, uint8_t block, uint8_t val)
+{
+	w6300_write_buf(dev, offset, block, &val, 1);
+}
+
+/* RX Polling Thread (Handles Init + RX) */
+static void eth_w6300_rx_thread(void *p1, void *p2, void *p3)
+{
+	const struct device *dev = p1;
+	uint8_t reg;
+
+	/* Wait for system to settle */
+	k_sleep(K_SECONDS(3));
+
+	LOG_INF("RX Thread: Starting W6300 Initialization...");
+
+	/* Initialize Soft SPI */
+	soft_spi_init(dev);
+	k_sleep(K_MSEC(100));
+
+	/* Soft reset */
+	/* Mode Register (MR) at 0x0000 in Common Block */
+	w6300_write_reg8(dev, W6300_REG_Sn_MR, W6300_BLOCK_COMMON, 0x80); 
+	k_msleep(10);
+
+	uint8_t ver = w6300_read_reg8(dev, W6300_VER, W6300_BLOCK_COMMON);
+	LOG_INF("W6300 SW-SPI Version: 0x%02X", ver);
 
 	if (eth_w6300_read_reg(dev, W6300_SYSR, &reg) == 0) {
 		LOG_INF("W6300 SYSR=0x%02X", reg);
 	}
 
-	LOG_INF("W6300 register dump 0x0000-0x000F:");
-	uint8_t prev = 0;
-	int same_run = 0;
-	int max_run = 0;
-	bool prev_valid = false;
-
-	for (int i = 0; i < 0x10; i++) {
-		uint8_t val = 0;
-
-		if (eth_w6300_read_reg(dev, (uint16_t)i, &val) == 0) {
-			LOG_INF("  [0x%04X] = 0x%02X", i, val);
-			if (prev_valid && val == prev) {
-				same_run++;
-			} else {
-				same_run = 1;
-				prev = val;
-				prev_valid = true;
-			}
-			if (same_run > max_run) {
-				max_run = same_run;
-			}
+	/* Init Socket 0 in MACRAW mode */
+	eth_w6300_write_reg(dev, W6300_REG_Sn_MR, W6300_MR_MACRAW);
+	eth_w6300_write_reg(dev, W6300_REG_Sn_CR, W6300_CR_OPEN);
+	
+	uint8_t cr;
+	do {
+		eth_w6300_read_reg(dev, W6300_REG_Sn_CR, &cr);
+	} while (cr != 0);
+	
+	/* Check PHY Link Status */
+	LOG_INF("RX Thread: Checking PHY Link...");
+	for (int i = 0; i < 50; i++) {
+		eth_w6300_read_reg(dev, W6300_PHYSR, &reg);
+		if (reg & W6300_PHYSR_LNK) {
+			LOG_INF("RX Thread: PHY Link Up! (PHYSR=0x%02X)", reg);
+			break;
 		}
+		if (i % 10 == 0) LOG_WRN("RX Thread: PHY Link Down (PHYSR=0x%02X)...", reg);
+		k_msleep(200);
 	}
-	if (max_run >= 8) {
-		LOG_WRN("Many identical register reads; possible SPI framing or MISO issue");
+
+	while (1) {
+		eth_w6300_rx(dev);
+		k_msleep(2);
 	}
+}
+
+static K_THREAD_STACK_DEFINE(rx_thread_stack, 2048);
+static struct k_thread rx_thread_data;
+
+static int eth_w6300_init(const struct device *dev)
+{
+	/* Only start the thread, do not touch HW here */
+	k_thread_create(&rx_thread_data, rx_thread_stack,
+			K_THREAD_STACK_SIZEOF(rx_thread_stack),
+			eth_w6300_rx_thread, (void *)dev, NULL, NULL,
+			K_PRIO_PREEMPT(7), 0, K_NO_WAIT);
 
 	return 0;
 }
